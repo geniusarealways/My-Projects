@@ -1,0 +1,1127 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parking Management System</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            margin-bottom: 10px;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 3fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .sidebar {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            height: fit-content;
+        }
+        
+        .sidebar ul {
+            list-style-type: none;
+        }
+        
+        .sidebar li {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .sidebar li:hover {
+            background-color: #f0f0f0;
+        }
+        
+        .sidebar li.active {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .main-content {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .parking-lot {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .parking-spot {
+            height: 80px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            border: 2px solid #ddd;
+        }
+        
+        .parking-spot.available {
+            background-color: #2ecc71;
+            color: white;
+            border-color: #27ae60;
+        }
+        
+        .parking-spot.occupied {
+            background-color: #e74c3c;
+            color: white;
+            border-color: #c0392b;
+        }
+        
+        .parking-spot.reserved {
+            background-color: #f39c12;
+            color: white;
+            border-color: #d35400;
+        }
+        
+        .parking-spot span {
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .spot-number {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 20px;
+            width: 50%;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .close {
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        .btn-danger {
+            background-color: #e74c3c;
+        }
+        
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+        
+        .btn-success {
+            background-color: #2ecc71;
+        }
+        
+        .btn-success:hover {
+            background-color: #27ae60;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background-color: #f2f2f2;
+            font-weight: 600;
+        }
+        
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stat-card h3 {
+            color: #7f8c8d;
+            margin-bottom: 10px;
+        }
+        
+        .stat-card p {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .search-bar {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        
+        .search-bar input {
+            flex-grow: 1;
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+        
+        .search-bar button {
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+            padding: 10px 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .modal-content {
+                width: 90%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Vehicle Parking Management System</h1>
+            <p>Manage your parking lot efficiently</p>
+        </header>
+        
+        <div class="dashboard">
+            <div class="sidebar">
+                <ul>
+                    <li class="active" onclick="showSection('dashboard')">Dashboard</li>
+                    <li onclick="showSection('parking-lot')">Parking Lot</li>
+                    <li onclick="showSection('vehicles')">Vehicles</li>
+                    <li onclick="showSection('reservations')">Reservations</li>
+                    <li onclick="showSection('reports')">Reports</li>
+                    <li onclick="showSection('settings')">Settings</li>
+                </ul>
+            </div>
+            
+            <div class="main-content" id="dashboard">
+                <h2>Dashboard</h2>
+                
+                <div class="stats">
+                    <div class="stat-card">
+                        <h3>Total Spots</h3>
+                        <p id="total-spots">100</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Available</h3>
+                        <p id="available-spots">45</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Occupied</h3>
+                        <p id="occupied-spots">50</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Reserved</h3>
+                        <p id="reserved-spots">5</p>
+                    </div>
+                </div>
+                
+                <h3>Recent Activity</h3>
+                <table id="recent-activity">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Vehicle</th>
+                            <th>Action</th>
+                            <th>Spot</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>14:30</td>
+                            <td>ABC-123</td>
+                            <td>Parked</td>
+                            <td>A15</td>
+                        </tr>
+                        <tr>
+                            <td>13:15</td>
+                            <td>XYZ-789</td>
+                            <td>Unparked</td>
+                            <td>B22</td>
+                        </tr>
+                        <tr>
+                            <td>12:00</td>
+                            <td>DEF-456</td>
+                            <td>Reserved</td>
+                            <td>C05</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="main-content" id="parking-lot" style="display: none;">
+                <h2>Parking Lot Map</h2>
+                <div class="search-bar">
+                    <input type="text" placeholder="Search for spot..." id="spot-search">
+                    <button onclick="searchSpot()">Search</button>
+                </div>
+                
+                <div class="parking-lot" id="parking-map">
+                    <!-- Parking spots will be generated by JavaScript -->
+                </div>
+            </div>
+            
+            <div class="main-content" id="vehicles" style="display: none;">
+                <h2>Registered Vehicles</h2>
+                <button onclick="openModal('add-vehicle-modal')">Add New Vehicle</button>
+                
+                <div class="search-bar">
+                    <input type="text" placeholder="Search vehicles..." id="vehicle-search">
+                    <button onclick="searchVehicle()">Search</button>
+                </div>
+                
+                <table id="vehicles-table">
+                    <thead>
+                        <tr>
+                            <th>License Plate</th>
+                            <th>Owner</th>
+                            <th>Vehicle Type</th>
+                            <th>Phone</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Vehicle data will be loaded by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="main-content" id="reservations" style="display: none;">
+                <h2>Reservations</h2>
+                <button onclick="openModal('add-reservation-modal')">Create Reservation</button>
+                
+                <table id="reservations-table">
+                    <thead>
+                        <tr>
+                            <th>Reservation ID</th>
+                            <th>License Plate</th>
+                            <th>Spot</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Reservation data will be loaded by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="main-content" id="reports" style="display: none;">
+                <h2>Reports</h2>
+                
+                <div class="form-group">
+                    <label for="report-type">Report Type</label>
+                    <select id="report-type">
+                        <option value="occupancy">Occupancy Rate</option>
+                        <option value="revenue">Revenue</option>
+                        <option value="usage">Usage Patterns</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="date-range">Date Range</label>
+                    <select id="date-range">
+                        <option value="today">Today</option>
+                        <option value="week">This Week</option>
+                        <option value="month">This Month</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+                </div>
+                
+                <div id="custom-date-range" style="display: none;">
+                    <div class="form-group">
+                        <label for="start-date">Start Date</label>
+                        <input type="date" id="start-date">
+                    </div>
+                    <div class="form-group">
+                        <label for="end-date">End Date</label>
+                        <input type="date" id="end-date">
+                    </div>
+                </div>
+                
+                <button onclick="generateReport()">Generate Report</button>
+                
+                <div id="report-results" style="margin-top: 20px;">
+                    <!-- Report results will be displayed here -->
+                </div>
+            </div>
+            
+            <div class="main-content" id="settings" style="display: none;">
+                <h2>Settings</h2>
+                
+                <h3>Parking Lot Configuration</h3>
+                <div class="form-group">
+                    <label for="total-spots-setting">Total Parking Spots</label>
+                    <input type="number" id="total-spots-setting" value="100">
+                </div>
+                
+                <div class="form-group">
+                    <label for="zones">Zones</label>
+                    <input type="text" id="zones" value="A,B,C,D" placeholder="Comma separated zone names">
+                </div>
+                
+                <h3>Pricing</h3>
+                <div class="form-group">
+                    <label for="hourly-rate">Hourly Rate ($)</label>
+                    <input type="number" id="hourly-rate" value="2.50" step="0.01">
+                </div>
+                
+                <div class="form-group">
+                    <label for="daily-rate">Daily Rate ($)</label>
+                    <input type="number" id="daily-rate" value="15.00" step="0.01">
+                </div>
+                
+                <div class="form-group">
+                    <label for="monthly-rate">Monthly Rate ($)</label>
+                    <input type="number" id="monthly-rate" value="200.00" step="0.01">
+                </div>
+                
+                <h3>Admin Account</h3>
+                <div class="form-group">
+                    <label for="admin-email">Email</label>
+                    <input type="email" id="admin-email" value="admin@parking.com">
+                </div>
+                
+                <div class="form-group">
+                    <label for="admin-password">Password</label>
+                    <input type="password" id="admin-password">
+                </div>
+                
+                <button onclick="saveSettings()">Save Settings</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add Vehicle Modal -->
+    <div id="add-vehicle-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('add-vehicle-modal')">&times;</span>
+            <h2>Add New Vehicle</h2>
+            <form id="add-vehicle-form">
+                <div class="form-group">
+                    <label for="license-plate">License Plate</label>
+                    <input type="text" id="license-plate" required>
+                </div>
+                <div class="form-group">
+                    <label for="owner-name">Owner Name</label>
+                    <input type="text" id="owner-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="owner-phone">Phone Number</label>
+                    <input type="tel" id="owner-phone" required>
+                </div>
+                <div class="form-group">
+                    <label for="owner-email">Email</label>
+                    <input type="email" id="owner-email">
+                </div>
+                <div class="form-group">
+                    <label for="vehicle-type">Vehicle Type</label>
+                    <select id="vehicle-type" required>
+                        <option value="car">Car</option>
+                        <option value="motorcycle">Motorcycle</option>
+                        <option value="van">Van</option>
+                        <option value="truck">Truck</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="vehicle-color">Color</label>
+                    <input type="text" id="vehicle-color">
+                </div>
+                <button type="submit" class="btn-success">Add Vehicle</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Add Reservation Modal -->
+    <div id="add-reservation-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('add-reservation-modal')">&times;</span>
+            <h2>Create Reservation</h2>
+            <form id="add-reservation-form">
+                <div class="form-group">
+                    <label for="reservation-plate">License Plate</label>
+                    <input type="text" id="reservation-plate" required list="vehicle-options">
+                    <datalist id="vehicle-options">
+                        <!-- Options will be populated by JavaScript -->
+                    </datalist>
+                </div>
+                <div class="form-group">
+                    <label for="reservation-spot">Parking Spot</label>
+                    <input type="text" id="reservation-spot" required>
+                </div>
+                <div class="form-group">
+                    <label for="reservation-date">Date</label>
+                    <input type="date" id="reservation-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="reservation-time">Time</label>
+                    <input type="time" id="reservation-time" required>
+                </div>
+                <div class="form-group">
+                    <label for="reservation-duration">Duration (hours)</label>
+                    <input type="number" id="reservation-duration" value="1" min="1" max="24">
+                </div>
+                <div class="form-group">
+                    <label for="reservation-notes">Notes</label>
+                    <input type="text" id="reservation-notes">
+                </div>
+                <button type="submit" class="btn-success">Create Reservation</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Parking Spot Detail Modal -->
+    <div id="spot-detail-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('spot-detail-modal')">&times;</span>
+            <h2>Parking Spot <span id="spot-number-detail"></span></h2>
+            <div id="spot-details">
+                <!-- Spot details will be loaded here -->
+            </div>
+            <div id="spot-actions">
+                <!-- Action buttons will be loaded here -->
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            generateParkingMap();
+            populateVehicleOptions();
+            updateDashboardStats();
+            
+            // Event listeners for forms
+            document.getElementById('add-vehicle-form').addEventListener('submit', addVehicle);
+            document.getElementById('add-reservation-form').addEventListener('submit', createReservation);
+            
+            // Event listener for custom date range
+            document.getElementById('date-range').addEventListener('change', function() {
+                document.getElementById('custom-date-range').style.display = 
+                    this.value === 'custom' ? 'block' : 'none';
+            });
+        });
+        
+        // Navigation
+        function showSection(sectionId) {
+            // Hide all sections
+            const sections = document.querySelectorAll('.main-content');
+            sections.forEach(section => {
+                section.style.display = 'none';
+            });
+            
+            // Remove active class from all sidebar items
+            const navItems = document.querySelectorAll('.sidebar li');
+            navItems.forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Show selected section and mark nav item as active
+            document.getElementById(sectionId).style.display = 'block';
+            event.target.classList.add('active');
+        }
+        
+        // Modal functions
+        function openModal(modalId) {
+            document.getElementById(modalId).style.display = 'block';
+        }
+        
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        }
+        
+        // Generate parking map
+        function generateParkingMap() {
+            const parkingMap = document.getElementById('parking-map');
+            parkingMap.innerHTML = '';
+            
+            // Get settings (in a real app, this would come from the server)
+            const totalSpots = 100;
+            const zones = ['A', 'B', 'C', 'D'];
+            
+            for (let i = 1; i <= totalSpots; i++) {
+                const zone = zones[Math.floor((i-1) / (totalSpots/zones.length))];
+                const spotId = zone + String(i).padStart(2, '0');
+                
+                // Random status - in real app, this would come from server
+                const statuses = ['available', 'occupied', 'reserved'];
+                const randomStatus = statuses[Math.floor(Math.random() * 3)];
+                
+                const spot = document.createElement('div');
+                spot.className = `parking-spot ${randomStatus}`;
+                spot.id = `spot-${spotId}`;
+                spot.setAttribute('data-spot', spotId);
+                spot.setAttribute('data-status', randomStatus);
+                
+                spot.innerHTML = `
+                    <div class="spot-number">${spotId}</div>
+                    <span>${getStatusText(randomStatus)}</span>
+                `;
+                
+                spot.addEventListener('click', function() {
+                    viewSpotDetails(spotId, randomStatus);
+                });
+                
+                parkingMap.appendChild(spot);
+            }
+        }
+        
+        function getStatusText(status) {
+            switch(status) {
+                case 'available': return 'Available';
+                case 'occupied': return 'Occupied';
+                case 'reserved': return 'Reserved';
+                default: return 'Available';
+            }
+        }
+        
+        // View spot details
+        function viewSpotDetails(spotId, status) {
+            const spotDetailModal = document.getElementById('spot-detail-modal');
+            document.getElementById('spot-number-detail').textContent = spotId;
+            
+            const spotDetails = document.getElementById('spot-details');
+            const spotActions = document.getElementById('spot-actions');
+            
+            // Clear previous content
+            spotDetails.innerHTML = '';
+            spotActions.innerHTML = '';
+            
+            // Set background color based on status
+            const modalContent = document.querySelector('#spot-detail-modal .modal-content');
+            modalContent.style.backgroundColor = getSpotColor(status);
+            
+            if (status === 'available') {
+                spotDetails.innerHTML = `
+                    <p><strong>Status:</strong> <span style="color: #2ecc71;">Available</span></p>
+                    <p>This parking spot is currently available for use.</p>
+                `;
+                spotActions.innerHTML = `
+                    <button class="btn-success" onclick="assignVehicle('${spotId}')">Assign Vehicle</button>
+                    <button class="btn-success" onclick="reserveSpot('${spotId}')">Reserve Spot</button>
+                `;
+            } else if (status === 'occupied') {
+                spotDetails.innerHTML = `
+                    <p><strong>Status:</strong> <span style="color: #e74c3c;">Occupied</span></p>
+                    <p><strong>Vehicle:</strong> ABC-123</p>
+                    <p><strong>Owner:</strong> John Doe</p>
+                    <p><strong>Check-in:</strong> 14:30</p>
+                    <p><strong>Duration:</strong> 2 hours</p>
+                `;
+                spotActions.innerHTML = `
+                    <button class="btn-danger" onclick="unparkVehicle('${spotId}')">Mark as Unparked</button>
+                `;
+            } else if (status === 'reserved') {
+                spotDetails.innerHTML = `
+                    <p><strong>Status:</strong> <span style="color: #f39c12;">Reserved</span></p>
+                    <p><strong>Vehicle:</strong> XYZ-789</p>
+                    <p><strong>Owner:</strong> Jane Smith</p>
+                    <p><strong>Reservation Time:</strong> 15:00</p>
+                    <p><strong>Duration:</strong> 3 hours</p>
+                `;
+                spotActions.innerHTML = `
+                    <button class="btn-success" onclick="markAsOccupied('${spotId}')">Mark as Occupied</button>
+                    <button class="btn-danger" onclick="cancelReservation('${spotId}')">Cancel Reservation</button>
+                `;
+            }
+            
+            openModal('spot-detail-modal');
+        }
+        
+        function getSpotColor(status) {
+            switch(status) {
+                case 'available': return '#2ecc71';
+                case 'occupied': return '#e74c3c';
+                case 'reserved': return '#f39c12';
+                default: return 'white';
+            }
+        }
+        
+        // Action functions
+        function assignVehicle(spotId) {
+            closeModal('spot-detail-modal');
+            openModal('add-vehicle-modal');
+            // In a real app, we would pre-fill the spot information
+        }
+        
+        function reserveSpot(spotId) {
+            closeModal('spot-detail-modal');
+            openModal('add-reservation-modal');
+            document.getElementById('reservation-spot').value = spotId;
+        }
+        
+        function unparkVehicle(spotId) {
+            if (confirm(`Are you sure you want to mark spot ${spotId} as unparked?`)) {
+                // In a real app, this would make an API call
+                document.getElementById(`spot-${spotId}`).className = 'parking-spot available';
+                document.getElementById(`spot-${spotId}`).innerHTML = `
+                    <div class="spot-number">${spotId}</div>
+                    <span>Available</span>
+                `;
+                closeModal('spot-detail-modal');
+                updateDashboardStats();
+                addRecentActivity(spotId, 'Unparked');
+            }
+        }
+        
+        function markAsOccupied(spotId) {
+            // In a real app, this would make an API call
+            document.getElementById(`spot-${spotId}`).className = 'parking-spot occupied';
+            document.getElementById(`spot-${spotId}`).innerHTML = `
+                <div class="spot-number">${spotId}</div>
+                <span>Occupied</span>
+            `;
+            closeModal('spot-detail-modal');
+            updateDashboardStats();
+            addRecentActivity(spotId, 'Parked');
+        }
+        
+        function cancelReservation(spotId) {
+            if (confirm(`Are you sure you want to cancel the reservation for spot ${spotId}?`)) {
+                // In a real app, this would make an API call
+                document.getElementById(`spot-${spotId}`).className = 'parking-spot available';
+                document.getElementById(`spot-${spotId}`).innerHTML = `
+                    <div class="spot-number">${spotId}</div>
+                    <span>Available</span>
+                `;
+                closeModal('spot-detail-modal');
+                updateDashboardStats();
+                addRecentActivity(spotId, 'Reservation Cancelled');
+            }
+        }
+        
+        // Form submission handlers
+        function addVehicle(event) {
+            event.preventDefault();
+            
+            const licensePlate = document.getElementById('license-plate').value;
+            const ownerName = document.getElementById('owner-name').value;
+            const ownerPhone = document.getElementById('owner-phone').value;
+            const ownerEmail = document.getElementById('owner-email').value;
+            const vehicleType = document.getElementById('vehicle-type').value;
+            const vehicleColor = document.getElementById('vehicle-color').value;
+            
+            // In a real app, this would make an API call to save the vehicle
+            console.log('Adding vehicle:', {licensePlate, ownerName, ownerPhone, ownerEmail, vehicleType, vehicleColor});
+            
+            // Add to vehicles table
+            const vehiclesTable = document.getElementById('vehicles-table').getElementsByTagName('tbody')[0];
+            const newRow = vehiclesTable.insertRow();
+            newRow.innerHTML = `
+                <td>${licensePlate}</td>
+                <td>${ownerName}</td>
+                <td>${vehicleType}</td>
+                <td>${ownerPhone}</td>
+                <td>
+                    <button onclick="editVehicle(this)">Edit</button>
+                    <button class="btn-danger" onclick="deleteVehicle(this)">Delete</button>
+                </td>
+            `;
+            
+            // Reset form and close modal
+            document.getElementById('add-vehicle-form').reset();
+            closeModal('add-vehicle-modal');
+            
+            // Update vehicle options
+            populateVehicleOptions();
+            
+            alert('Vehicle added successfully!');
+        }
+        
+        function createReservation(event) {
+            event.preventDefault();
+            
+            const licensePlate = document.getElementById('reservation-plate').value;
+            const spot = document.getElementById('reservation-spot').value;
+            const date = document.getElementById('reservation-date').value;
+            const time = document.getElementById('reservation-time').value;
+            const duration = document.getElementById('reservation-duration').value;
+            const notes = document.getElementById('reservation-notes').value;
+            
+            // In a real app, this would make an API call to create reservation
+            console.log('Creating reservation:', {licensePlate, spot, date, time, duration, notes});
+            
+            // Add to reservations table
+            const reservationsTable = document.getElementById('reservations-table').getElementsByTagName('tbody')[0];
+            const newRow = reservationsTable.insertRow();
+            const reservationId = 'R' + Math.floor(Math.random() * 10000);
+            newRow.innerHTML = `
+                <td>${reservationId}</td>
+                <td>${licensePlate}</td>
+                <td>${spot}</td>
+                <td>${date}</td>
+                <td>${time}</td>
+                <td>Active</td>
+                <td>
+                    <button onclick="editReservation(this)">Edit</button>
+                    <button class="btn-danger" onclick="cancelReservationFromTable(this)">Cancel</button>
+                </td>
+            `;
+            
+            // Update spot status if it's today's reservation
+            const today = new Date().toISOString().split('T')[0];
+            if (date === today) {
+                const spotElement = document.getElementById(`spot-${spot}`);
+                if (spotElement) {
+                    spotElement.className = 'parking-spot reserved';
+                    spotElement.innerHTML = `
+                        <div class="spot-number">${spot}</div>
+                        <span>Reserved</span>
+                    `;
+                }
+            }
+            
+            // Reset form and close modal
+            document.getElementById('add-reservation-form').reset();
+            closeModal('add-reservation-modal');
+            
+            updateDashboardStats();
+            addRecentActivity(spot, 'Reserved');
+            
+            alert('Reservation created successfully!');
+        }
+        
+        // Helper functions
+        function populateVehicleOptions() {
+            const vehicleOptions = document.getElementById('vehicle-options');
+            vehicleOptions.innerHTML = '';
+            
+            // In a real app, this would fetch from server
+            const sampleVehicles = ['ABC-123', 'XYZ-789', 'DEF-456', 'GHI-789'];
+            sampleVehicles.forEach(plate => {
+                const option = document.createElement('option');
+                option.value = plate;
+                vehicleOptions.appendChild(option);
+            });
+        }
+        
+        function updateDashboardStats() {
+            // In a real app, this would fetch from server
+            const totalSpots = 100;
+            const available = Math.floor(Math.random() * 30) + 30; // 30-60
+            const occupied = totalSpots - available - Math.floor(Math.random() * 10); // Some reserved
+            const reserved = totalSpots - available - occupied;
+            
+            document.getElementById('total-spots').textContent = totalSpots;
+            document.getElementById('available-spots').textContent = available;
+            document.getElementById('occupied-spots').textContent = occupied;
+            document.getElementById('reserved-spots').textContent = reserved;
+        }
+        
+        function addRecentActivity(spot, action) {
+            const activityTable = document.getElementById('recent-activity').getElementsByTagName('tbody')[0];
+            const now = new Date();
+            const time = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+            
+            // Get vehicle plate (in real app, this would be known)
+            const vehiclePlates = ['ABC-123', 'XYZ-789', 'DEF-456', 'GHI-789'];
+            const randomPlate = vehiclePlates[Math.floor(Math.random() * vehiclePlates.length)];
+            
+            const newRow = activityTable.insertRow(0); // Insert at top
+            newRow.innerHTML = `
+                <td>${time}</td>
+                <td>${randomPlate}</td>
+                <td>${action}</td>
+                <td>${spot}</td>
+            `;
+            
+            // Remove oldest entry if more than 10
+            if (activityTable.rows.length > 10) {
+                activityTable.deleteRow(activityTable.rows.length - 1);
+            }
+        }
+        
+        function searchSpot() {
+            const searchTerm = document.getElementById('spot-search').value.toUpperCase();
+            const spots = document.getElementsByClassName('parking-spot');
+            
+            for (let spot of spots) {
+                const spotId = spot.getAttribute('data-spot');
+                if (spotId.includes(searchTerm)) {
+                    spot.scrollIntoView({behavior: 'smooth', block: 'center'});
+                    // Highlight the spot briefly
+                    spot.style.transform = 'scale(1.1)';
+                    setTimeout(() => {
+                        spot.style.transform = 'scale(1)';
+                    }, 1000);
+                    break;
+                }
+            }
+        }
+        
+        function searchVehicle() {
+            const searchTerm = document.getElementById('vehicle-search').value.toUpperCase();
+            const table = document.getElementById('vehicles-table');
+            const rows = table.getElementsByTagName('tr');
+            
+            for (let i = 1; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName('td');
+                let found = false;
+                
+                for (let j = 0; j < cells.length - 1; j++) { // Exclude actions column
+                    if (cells[j].textContent.toUpperCase().includes(searchTerm)) {
+                        found = true;
+                        break;
+                    }
+                }
+                
+                rows[i].style.display = found ? '' : 'none';
+            }
+        }
+        
+        function generateReport() {
+            const reportType = document.getElementById('report-type').value;
+            const dateRange = document.getElementById('date-range').value;
+            
+            let startDate, endDate;
+            if (dateRange === 'custom') {
+                startDate = document.getElementById('start-date').value;
+                endDate = document.getElementById('end-date').value;
+                if (!startDate || !endDate) {
+                    alert('Please select both start and end dates.');
+                    return;
+                }
+            }
+            
+            // In a real app, this would make an API call with the parameters
+            const reportResults = document.getElementById('report-results');
+            reportResults.innerHTML = `
+                <h3>${getReportTypeName(reportType)} Report</h3>
+                <p><strong>Date Range:</strong> ${getFormattedDateRange(dateRange, startDate, endDate)}</p>
+                <div style="margin-top: 20px; height: 300px; border: 1px solid #ddd; border-radius: 5px; padding: 10px;">
+                    <p style="text-align: center; margin-top: 100px; color: #777;">Report visualization would appear here</p>
+                    <p style="text-align: center; color: #777;">(In a real application, this would display charts and graphs)</p>
+                </div>
+                <table style="margin-top: 20px;">
+                    <thead>
+                        <tr>
+                            <th>Period</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${generateSampleDataRows(reportType)}
+                    </tbody>
+                </table>
+            `;
+        }
+        
+        function getReportTypeName(type) {
+            switch(type) {
+                case 'occupancy': return 'Occupancy Rate';
+                case 'revenue': return 'Revenue';
+                case 'usage': return 'Usage Patterns';
+                default: return type;
+            }
+        }
+        
+        function getFormattedDateRange(range, start, end) {
+            const today = new Date();
+            const dd = String(today.getDate()).padStart(2, '0');
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const yyyy = today.getFullYear();
+            const todayStr = `${yyyy}-${mm}-${dd}`;
+            
+            switch(range) {
+                case 'today': return 'Today (' + formatDate(todayStr) + ')';
+                case 'week': return 'This Week (Last 7 days)';
+                case 'month': return 'This Month (Last 30 days)';
+                case 'custom': return formatDate(start) + ' to ' + formatDate(end);
+                default: return 'Unknown';
+            }
+        }
+        
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString();
+        }
+        
+        function generateSampleDataRows(reportType) {
+            let rows = '';
+            const periods = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            
+            for (let period of periods) {
+                let value;
+                switch(reportType) {
+                    case 'occupancy':
+                        value = Math.floor(Math.random() * 40) + 60 + '%'; // 60-100%
+                        break;
+                    case 'revenue':
+                        value = '$' + (Math.floor(Math.random() * 500) + 200);
+                        break;
+                    case 'usage':
+                        value = Math.floor(Math.random() * 15) + 5 + ' vehicles';
+                        break;
+                    default:
+                        value = 'N/A';
+                }
+                rows += `<tr><td>${period}</td><td>${value}</td></tr>`;
+            }
+            
+            return rows;
+        }
+        
+        function saveSettings() {
+            // In a real app, this would save to the server
+            alert('Settings saved successfully!');
+        }
+        
+        // Placeholder functions for table actions
+        function editVehicle(element) {
+            alert('Edit vehicle functionality would be implemented here');
+        }
+        
+        function deleteVehicle(element) {
+            if (confirm('Are you sure you want to delete this vehicle?')) {
+                element.parentElement.parentElement.remove();
+                populateVehicleOptions();
+                alert('Vehicle deleted');
+            }
+        }
+        
+        function editReservation(element) {
+            alert('Edit reservation functionality would be implemented here');
+        }
+        
+        function cancelReservationFromTable(element) {
+            if (confirm('Are you sure you want to cancel this reservation?')) {
+                const row = element.parentElement.parentElement;
+                const spot = row.cells[2].textContent;
+                row.remove();
+                
+                // Update spot status if it's today's reservation
+                const today = new Date().toISOString().split('T')[0];
+                const reservationDate = row.cells[3].textContent;
+                if (reservationDate === today) {
+                    const spotElement = document.getElementById(`spot-${spot}`);
+                    if (spotElement) {
+                        spotElement.className = 'parking-spot available';
+                        spotElement.innerHTML = `
+                            <div class="spot-number">${spot}</div>
+                            <span>Available</span>
+                        `;
+                    }
+                }
+                
+                updateDashboardStats();
+                addRecentActivity(spot, 'Reservation Cancelled');
+                alert('Reservation cancelled');
+            }
+        }
+    </script>
+</body>
+</html>
