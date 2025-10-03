@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pushups Counter (Browser) — Pose Detection</title>
+  <style>
+    :root{
+      --bg:#0f1724; --card:#0b1320; --accent:#ffb703; --muted:#9aa4b2; --glass: rgba(255,255,255,0.03);
+      --success: #16a34a; --danger:#ef4444;
+    }
+    *{box-sizing:border-box;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,'Helvetica Neue',Arial}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#071021 0%, #07152a 100%);color:#e6eef6}
+    .app{max-width:1100px;margin:28px auto;padding:20px;display:grid;grid-template-columns:1fr 360px;gap:20px}
+
+    /* Left - camera */
+    .card{background:var(--card);border-radius:14px;padding:16px;box-shadow:0 6px 30px rgba(2,6,23,0.6)}
+    .camera-wrap{position:relative;border-radius:10px;overflow:hidden;background:var(--glass);display:flex;align-items:center;justify-content:center;height:70vh;min-height:420px}
+    video#video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+    canvas#overlay{position:absolute;inset:0;pointer-events:none}
+
+    /* Right - controls */
+    .sidebar{display:flex;flex-direction:column;gap:12px}
+    .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+    .stat{background:rgba(255,255,255,0.02);padding:12px;border-radius:10px;text-align:center}
+    .stat .num{font-size:28px;font-weight:700}
+    .controls{display:flex;gap:8px;flex-wrap:wrap}
+    button{background:linear-gradient(180deg,var(--accent),#ff8a00);border:none;padding:10px 14px;border-radius:10px;color:#071021;font-weight:700;cursor:pointer}
+    button.secondary{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--accent);}
+    .muted{color:var(--muted);font-size:13px}
+    .footer{font-size:13px;color:var(--muted);margin-top:6px}
+
+    /* Responsive */
+    @media (max-width:980px){.app{grid-template-columns:1fr;}
+      .camera-wrap{height:58vh;min-height:320px}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="card">
+      <h2 style="margin:0 0 8px 0">Pushups Counter — Camera (Local)</h2>
+      <p class="muted" style="margin:0 0 12px 0">Counts pushups using upper-body (shoulder/head) movement. All processing stays in your browser.</p>
+      <div class="camera-wrap">
+        <video id="video" playsinline></video>
+        <canvas id="overlay"></canvas>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+        <div class="muted">Calibration: <span id="calibStatus">Not done</span></div>
+        <div class="muted">Privacy: <strong>Local only</strong></div>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <div class="card" style="padding:16px">
+        <h3 style="margin:0 0 8px 0">Session</h3>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <div style="font-size:40px;font-weight:800;color:var(--accent)" id="count">0</div>
+          <div style="flex:1">
+            <div class="muted">Reps</div>
+            <div style="font-weight:700" id="status">Idle</div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="startBtn">Start Session</button>
+          <button class="secondary" id="stopBtn">Stop</button>
+          <button class="secondary" id="calibBtn">Calibrate</button>
+          <button class="secondary" id="resetBtn">Reset</button>
+        </div>
+
+        <div class="footer">Tip: stand 1.5–2 meters from the camera for full upper-body view. If using phone, turn camera to front-facing mode.</div>
+      </div>
+
+      <div class="card" style="padding:12px">
+        <h3 style="margin:0 0 8px 0">Stats & Records</h3>
+        <div class="stats" style="margin-bottom:8px">
+          <div class="stat"><div class="muted">Duration</div><div class="num" id="duration">00:00</div></div>
+          <div class="stat"><div class="muted">RPM</div><div class="num" id="rpm">0</div></div>
+          <div class="stat"><div class="muted">Best</div><div class="num" id="best">0</div></div>
+          <div class="stat"><div class="muted">Sessions</div><div class="num" id="sessions">0</div></div>
+        </div>
+        <div class="muted">Milestones: <span id="milestones">—</span></div>
+      </div>
+
+      <div class="card" style="padding:12px">
+        <h3 style="margin:0 0 8px 0">Algorithm</h3>
+        <p class="muted" style="margin:0">This demo uses TensorFlow.js MoveNet pose-detection. Counting logic focuses on shoulder Y positions relative to your calibrated top position — more robust to hip movement. You can tweak sensitivity below.</p>
+        <div style="margin-top:8px;display:flex;gap:8px">
+          <label class="muted">Sensitivity<input type="range" id="sensitivity" min="0.6" max="1.4" step="0.05" value="1.0"></label>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TF.js & pose-detection model -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
+  <script>
+    // Single-file pushups counter (MoveNet)
+    const video = document.getElementById('video');
+    const overlay = document.getElementById('overlay');
+    const ctx = overlay.getContext('2d');
+    const countEl = document.getElementById('count');
+    const statusEl = document.getElementById('status');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const calibBtn = document.getElementById('calibBtn');
+    const calibStatus = document.getElementById('calibStatus');
+    const durationEl = document.getElementById('duration');
+    const rpmEl = document.getElementById('rpm');
+    const bestEl = document.getElementById('best');
+    const sessionsEl = document.getElementById('sessions');
+    const milestonesEl = document.getElementById('milestones');
+    const sensitivityControl = document.getElementById('sensitivity');
+
+    let detector=null; // pose detector
+    let running=false;
+    let rafId=null;
+
+    // Counting state
+    let repCount=0;
+    let stage='up'; // 'up' or 'down'
+    let startTime=null;
+    let elapsed=0;
+    let lastRepTime=0;
+    let repTimes=[];
+
+    // Calibration
+    let calibrated=false;
+    let topShoulderY=null;
+    let bottomShoulderY=null;
+    let thresholdDown=null;
+    let thresholdUp=null;
+
+    // load best
+    let best = parseInt(localStorage.getItem('push_best')||'0',10);
+    let sessions = parseInt(localStorage.getItem('push_sessions')||'0',10);
+    bestEl.textContent = best; sessionsEl.textContent = sessions;
+
+    async function setupCamera(){
+      const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}, audio:false});
+      video.srcObject = stream;
+      await video.play();
+      overlay.width = video.videoWidth; overlay.height = video.videoHeight;
+      video.style.width = '100%';
+    }
+
+    async function loadModel(){
+      const model = poseDetection.SupportedModels.MoveNet;
+      detector = await poseDetection.createDetector(model, {modelType: 'SinglePose.Lightning'});
+    }
+
+    function drawKeypoints(keypoints){
+      ctx.clearRect(0,0,overlay.width,overlay.height);
+      // mirror to match video
+      ctx.save(); ctx.scale(-1,1); ctx.translate(-overlay.width,0);
+      // draw skeleton
+      ctx.lineWidth=2; ctx.strokeStyle='rgba(255,255,255,0.6)'; ctx.fillStyle='rgba(255,255,255,0.8)';
+      const kpByName = {};
+      keypoints.forEach(k=> kpByName[k.name]=k);
+      const drawPoint = (k)=>{
+        if(k.score>0.4){ ctx.beginPath(); ctx.arc(k.x*overlay.width, k.y*overlay.height, 5,0,2*Math.PI); ctx.fill(); }
+      }
+      // joints
+      ['left_shoulder','right_shoulder','left_hip','right_hip','nose'].forEach(n=>{ if(kpByName[n]) drawPoint(kpByName[n]) });
+      // lines: shoulders
+      if(kpByName['left_shoulder'] && kpByName['right_shoulder']){
+        const a=kpByName['left_shoulder'], b=kpByName['right_shoulder'];
+        ctx.beginPath(); ctx.moveTo(a.x*overlay.width,a.y*overlay.height); ctx.lineTo(b.x*overlay.width,b.y*overlay.height); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function getAverageShoulderY(kp){
+      const ls = kp.find(k=>k.name==='left_shoulder');
+      const rs = kp.find(k=>k.name==='right_shoulder');
+      if(!ls || !rs) return null;
+      // note: keypoints are normalized [0..1]
+      return (ls.y + rs.y)/2; // lower means smaller y
+    }
+
+    function calibrateSample(avgY){
+      if(topShoulderY===null) topShoulderY = avgY; // initial top
+      // update moving min/max
+      topShoulderY = Math.min(topShoulderY, avgY);
+      bottomShoulderY = bottomShoulderY===null? avgY : Math.max(bottomShoulderY, avgY);
+      // thresholds: use sensitivity
+      const sens = parseFloat(sensitivityControl.value);
+      thresholdDown = topShoulderY + (bottomShoulderY - topShoulderY) * (0.45 * sens); // when considered down
+      thresholdUp = topShoulderY + (bottomShoulderY - topShoulderY) * (0.25 * sens); // when considered up again
+    }
+
+    function resetSession(){
+      repCount=0; stage='up'; startTime=null; elapsed=0; lastRepTime=0; repTimes=[];
+      countEl.textContent = 0; statusEl.textContent='Idle'; durationEl.textContent='00:00'; rpmEl.textContent='0'; milestonesEl.textContent='—';
+    }
+
+    function updateStats(){
+      countEl.textContent = repCount;
+      if(startTime){
+        elapsed = Math.floor((Date.now()-startTime)/1000);
+        const mm = String(Math.floor(elapsed/60)).padStart(2,'0');
+        const ss = String(elapsed%60).padStart(2,'0');
+        durationEl.textContent = `${mm}:${ss}`;
+      }
+      // rpm: recent 1 minute average
+      const lastMinute = repTimes.filter(t=> (Date.now()-t)<=60000).length;
+      rpmEl.textContent = lastMinute;
+      // milestones
+      const next = [10,20,50,100].find(m=>m>repCount) || '—';
+      milestonesEl.textContent = next;
+    }
+
+    function onRep(){
+      repCount++; repTimes.push(Date.now()); lastRepTime=Date.now();
+      // update best
+      if(repCount>best){ best=repCount; localStorage.setItem('push_best',String(best)); bestEl.textContent=best }
+      countEl.textContent = repCount; statusEl.textContent = 'Counting';
+      // milestone cheer (basic)
+      if([10,20,50,100].includes(repCount)){
+        // small visual feedback
+        alert(`Nice! You hit ${repCount} pushups 🎉`);
+      }
+    }
+
+    async function detectLoop(){
+      if(!running) return;
+      if(!detector) return;
+      try{
+        const poses = await detector.estimatePoses(video, {flipHorizontal:true});
+        if(poses && poses.length){
+          const keypoints = poses[0].keypoints;
+          drawKeypoints(keypoints);
+          const avgY = getAverageShoulderY(keypoints);
+          if(avgY!==null){
+            if(!calibrated){
+              // collect a few seconds of calibration automatically
+              calibrateSample(avgY);
+              calibStatus.textContent = 'Auto-calibrating';
+            }
+            // counting logic: detect crossing thresholds
+            if(thresholdDown && thresholdUp){
+              if(stage==='up' && avgY > thresholdDown){ // moved down
+                stage='down';
+                //console.log('down');
+              }
+              if(stage==='down' && avgY < thresholdUp){ // moved up
+                stage='up';
+                onRep();
+              }
+            }
+          }
+        }
+      }catch(e){ console.error(e) }
+      updateStats();
+      rafId = requestAnimationFrame(detectLoop);
+    }
+
+    // Public controls
+    startBtn.addEventListener('click', async ()=>{
+      if(!detector){ statusEl.textContent='Loading model...'; await loadModel(); }
+      if(video.paused) await setupCamera();
+      running = true; startTime = startTime || Date.now(); statusEl.textContent='Running';
+      // if not calibrated, set calibrated true after 1.8s auto-samples
+      if(!calibrated){ calibrated=true; topShoulderY=null; bottomShoulderY=null; calibStatus.textContent='Calibrating (stand naturally)'; setTimeout(()=>{calibStatus.textContent='Calibrated';},1800); }
+      detectLoop();
+    });
+
+    stopBtn.addEventListener('click', ()=>{
+      running=false; statusEl.textContent='Stopped'; if(rafId) cancelAnimationFrame(rafId);
+      // save session
+      if(repCount>0){ sessions++; localStorage.setItem('push_sessions',String(sessions)); sessionsEl.textContent=sessions }
+    });
+
+    resetBtn.addEventListener('click', ()=>{
+      if(confirm('Reset current session data?')){ resetSession(); }
+    });
+
+    calibBtn.addEventListener('click', ()=>{
+      // manual calibration: take a few frames and set top/bottom
+      calibrated=false; topShoulderY=null; bottomShoulderY=null; calibStatus.textContent='Manual calibration: please perform a single full rep (up then down)';
+      // we'll collect sample over 2.5s
+      setTimeout(()=>{ calibrated=true; calibStatus.textContent='Calibrated'; },2500);
+    });
+
+    // adjust overlay size when video resizes
+    function fitCanvas(){ overlay.width = video.videoWidth; overlay.height = video.videoHeight; }
+    window.addEventListener('resize', fitCanvas);
+
+    // warm model in background
+    (async ()=>{
+      try{ await loadModel(); console.log('Model loaded'); }catch(e){ console.warn('Model not auto-loaded',e) }
+    })();
+
+    // initial UI
+    resetSession();
+
+    // privacy note: no uploads
+    // end
+  </script>
+</body>
+</html>
